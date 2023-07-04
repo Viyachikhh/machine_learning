@@ -2,10 +2,16 @@ import json
 import pathlib
 import pandas as pd
 import cv2
+import re
+import torch
 
 from collections import defaultdict
+from torchtext.data.utils import get_tokenizer
+from torchtext.vocab import build_vocab_from_iterator
+from torchtext.functional import to_tensor
 
-from consts import (ANN_PATH, TRAIN_IMGS_PATH, VAL_IMGS_PATH, IMAGE_WIDTH, IMAGE_HEIGHT)
+
+from consts import (ANN_PATH, TRAIN_IMGS_PATH, VAL_IMGS_PATH, IMAGE_WIDTH, IMAGE_HEIGHT, TOKENIZER)
 
 """
     annotations.json keys:
@@ -17,6 +23,13 @@ from consts import (ANN_PATH, TRAIN_IMGS_PATH, VAL_IMGS_PATH, IMAGE_WIDTH, IMAGE
 annotations contain captions and images connected with these 
 captions throw key 'image_id' in annotations and key 'id' in images.
 """
+
+
+def yield_token(captions):
+    for example in captions:
+        tokens = TOKENIZER(example)
+        yield tokens
+
 
 
 class COCOparser:
@@ -62,15 +75,25 @@ class COCOparser:
         captions = self.annotations_data.loc[self.annotations_data.id == image_id].caption.values.tolist()
         return captions if len(captions) > 0 else None
     
-    def get_dataset(self):
-        merged_df = self.image_data.merge(self.annotations_data, on='id')
-        prev_img_name = None
-        for index, data_row in merged_df.iterrows():
-            img_name = data_row[1].filename
-            if prev_img_name is None or img_name != prev_img_name:
-                img = self.get_img_by_name(img_name,resize=True)
-            prev_img_name = img_name
-            
+    def tokenize_captions(self):
+        captions = self.annotations_data.caption
+        captions = captions.apply(lambda x: re.sub(r"[\.,:!?]",' ', x))
+        captions = captions.apply(lambda x: re.sub(r" +",' ', x))
+        captions = captions.apply(lambda x: ("<|startoftext|> " + x + "<|endoftext|>").lower())
+        
+        #"""
+        token_generator = yield_token(captions)
+        vocab = build_vocab_from_iterator(token_generator)
+        vocab.set_default_index(-1)
+        print(vocab['<|startoftext|>'], vocab['<|endoftext|>'], vocab['bicycle'], vocab['A'])
+        captions = captions.apply(lambda x: [vocab[word] for word in x.split(' ')]).values
+        print(captions)
+        #"""
+
+        captions = torch.nn.utils.rnn.pad_sequence([torch.tensor(p) for p in captions], batch_first=True)
+        print(captions.shape)
+        
+
 
 
 
@@ -82,7 +105,8 @@ def display_image(img, captions):
 
 json_val_name = ANN_PATH + '/captions_val2017.json'
 json_train_name = ANN_PATH + '/captions_train2017.json'
-parser = COCOparser(json_val_name, img_path='val')
+parser = COCOparser(json_train_name, img_path='train')
 # parser = COCOparser(json_train_name)
 # img, captions = parser.get_img_by_id(139), parser.get_caption_by_id(139)
-parser.get_dataset()
+# parser.get_dataset()
+parser.tokenize_captions()
