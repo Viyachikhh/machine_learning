@@ -15,3 +15,5 @@ STOPWORDS = ["a", "an", "the", "this", "that", "is", "it", "to", "and"]
 
 TOKENIZER = get_tokenizer('basic_english')
 
+START_TOKEN = '<|startoftext|>'
+END_TOKEN = '<|endoftext|>'
