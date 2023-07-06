@@ -1,5 +1,6 @@
-
+import re
 from torchtext.data.utils import get_tokenizer
+
 
 IMAGE_HEIGHT = 448
 IMAGE_WIDTH = 448
@@ -17,3 +18,4 @@ TOKENIZER = get_tokenizer('basic_english')
 
 START_TOKEN = '<|startoftext|>'
 END_TOKEN = '<|endoftext|>'
+REGEX_VERBS = r"\'re |\'ve |\'ll |\'s |\'m |\'d "

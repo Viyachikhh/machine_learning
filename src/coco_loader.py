@@ -10,15 +10,10 @@ import time
 
 from collections import defaultdict
 from gc import collect
-from torchtext.data.utils import get_tokenizer
-from torchtext.vocab import build_vocab_from_iterator
-from torchtext.functional import to_tensor
-from pandarallel import pandarallel
 
 
-from consts import (ANN_PATH, TRAIN_IMGS_PATH, VAL_IMGS_PATH, 
-                    IMAGE_WIDTH, IMAGE_HEIGHT, 
-                    TOKENIZER, START_TOKEN, END_TOKEN)
+from consts import (TRAIN_IMGS_PATH, VAL_IMGS_PATH, 
+                    IMAGE_WIDTH, IMAGE_HEIGHT)
 
 """
     annotations.json keys:
@@ -80,57 +75,20 @@ class COCOparser:
         else:
             return self.get_img_by_name(image_name)
         
+    def get_all_imgs_path(self):
+        pass
+        
     def get_caption_by_id(self, image_id):
         captions = self.annotations_data.filter(pl.col('id') == image_id).select(pl.col('caption')).to_dict()['caption']
         return captions if len(captions) > 0 else None
+
+    @property
+    def get_image_data(self):
+        return self.image_data
     
-    def __preprocessing__(self, captions):
-        captions = captions.apply(lambda x: re.sub(r"[\.,:!?]",' ', x[0]))
-        captions = captions.apply(lambda x: re.sub(r" +",' ', x[0]))
-        captions = captions.select(pl.col("apply").str.to_lowercase())
-        captions = captions.apply(lambda x: (START_TOKEN + " " + x[0] + END_TOKEN))
-    
-        # captions = captions.select(pl.col('caption').str.to_lowercase())
-        return captions
-
-    
-    def build_vocabulary(self):
-
-        def yield_token(captions):
-            for example in captions.to_dict()['apply']:
-                tokens = TOKENIZER(example)
-                yield tokens
-
-        # preprocess captions
-        captions = self.annotations_data.select(pl.col('caption'))
-        captions = self.__preprocessing__(captions)
-        
-        # creating vocabulary 
-        token_generator = yield_token(captions)
-        vocab = build_vocab_from_iterator(token_generator)
-        vocab.set_default_index(-1)
-
-        self.vocab = vocab
-        
-        
-    def get_caption_tokens(self, only_unique=False, new_data: list[str] = None):
-        """
-        if only_unique is True, tokenize only one pair image-caption,
-        otherwise, tokenize all captions, and image data will be repeated
-        """
-        if new_data is None:
-            if only_unique:
-                captions = self.image_data.apply(lambda x: self.get_caption_by_id(x[0])[0])
-            else:
-                captions = self.image_data.apply(lambda x: self.get_caption_by_id(x[0]))
-                captions = captions.explode("apply")
-
-        
-        """
-        captions = [[self.vocab[word] for word in list_word] for list_word in captions]
-        captions = torch.nn.utils.rnn.pad_sequence([torch.tensor(p) for p in captions], batch_first=True)
-        return caption
-        """
+    @property
+    def get_annotations_data(self):
+        return self.annotations_data
 
 
 
@@ -139,17 +97,3 @@ def display_image(img, captions):
         cv2.imshow(caption, img)
         cv2.waitKey(0)
     cv2.destroyAllWindows()
-
-
-
-if __name__ == "__main__":
-    json_val_name = ANN_PATH + '/captions_val2017.json'
-    json_train_name = ANN_PATH + '/captions_train2017.json'
-    parser = COCOparser(json_train_name, img_path='train')
-    # img, captions = None , parser.get_caption_by_id(149)
-    t = time.time() 
-    parser.build_vocabulary()
-    print(time.time() - t, '----- building vocabulary')
-    t = time.time()
-    parser.get_caption_tokens()
-    print(time.time() - t, '----- tokenize')
