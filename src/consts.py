@@ -1,9 +1,13 @@
 import re
+from torch import device
+from torch.cuda import is_available
+from torch.nn import Sequential
 from torchtext.data.utils import get_tokenizer
+from torchvision.transforms import Compose, Resize
 
 
-IMAGE_HEIGHT = 448
-IMAGE_WIDTH = 448
+IMAGE_HEIGHT = 224
+IMAGE_WIDTH = 224
 
 ORIGINAL_DATASET_PATH = '/home/viyachikhh/Datasets/coco'
 
@@ -19,3 +23,7 @@ TOKENIZER = get_tokenizer('basic_english')
 START_TOKEN = '<|startoftext|>'
 END_TOKEN = '<|endoftext|>'
 REGEX_VERBS = r"\'re |\'ve |\'ll |\'s |\'m |\'d "
+
+DEVICE = device('cuda' if is_available() else 'cpu')
+
+IMAGE_RESIZE_OBJ = Compose(Resize(size=(IMAGE_HEIGHT, IMAGE_WIDTH)))
