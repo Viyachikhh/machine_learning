@@ -26,4 +26,4 @@ REGEX_VERBS = r"\'re |\'ve |\'ll |\'s |\'m |\'d "
 
 DEVICE = device('cuda' if is_available() else 'cpu')
 
-IMAGE_RESIZE_OBJ = Compose(Resize(size=(IMAGE_HEIGHT, IMAGE_WIDTH)))
+IMAGE_RESIZE_OBJ = Compose([Resize(size=(IMAGE_HEIGHT, IMAGE_WIDTH))])
