@@ -1,9 +1,12 @@
 import re
+import warnings
 from torch import device
 from torch.cuda import is_available
 from torch.nn import Sequential
 from torchtext.data.utils import get_tokenizer
-from torchvision.transforms import Compose, Resize
+from torchvision.transforms import Compose, Resize, Normalize, ToTensor
+
+warnings.filterwarnings("ignore")
 
 
 IMAGE_HEIGHT = 224

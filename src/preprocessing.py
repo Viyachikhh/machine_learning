@@ -2,6 +2,7 @@
 import pathlib
 import polars as pl
 import re
+import warnings
 import time
 import torch
 import torchvision.transforms.v2 as transforms
@@ -17,24 +18,29 @@ from consts import (TOKENIZER, START_TOKEN, END_TOKEN, ANN_PATH, REGEX_VERBS,
                     DEVICE, IMAGE_RESIZE_OBJ, IMAGE_HEIGHT, IMAGE_WIDTH)
 from coco_loader import COCOparser
 
+warnings.filterwarnings("ignore")
+
 
 def preprocess_image(image_path, resize_obj=IMAGE_RESIZE_OBJ):
         img = read_image(image_path)
-        return resize_obj(img)
+        img = resize_obj(img) / 255.
+        return img
 
-def preprocess_image_cv(image_path):
-    img = imread(image_path)
-    img = resize(img, (IMAGE_HEIGHT, IMAGE_WIDTH), interpolation=INTER_AREA)
-    return img
 
 def preprocess_text(string):
+    """
+    Cleaning string from punkt and letters
+    """
     prep_string = re.sub(r"[\.,:!?\"]+",' ', string)
-    prep_string = re.sub(REGEX_VERBS, ' ', prep_string)
-    prep_string = re.sub(r" +",' ', prep_string).lower()
+    # prep_string = re.sub(REGEX_VERBS, ' ', prep_string)
     prep_string = START_TOKEN + " " + prep_string + " " + END_TOKEN
+    prep_string = re.sub(r" +",' ', prep_string).lower()
     return prep_string
 
 def build_vocabulary(data: Union[pl.DataFrame, list[str]]):
+    """
+    Create voabulary from pl.DataFrame or list of str
+    """
 
     def yield_token_from_df(captions):
         for example in captions.to_dict()['apply']:
@@ -61,7 +67,10 @@ def build_vocabulary(data: Union[pl.DataFrame, list[str]]):
 
     return vocab
                 
-def get_tokens(vocab, data):
+def get_tokens(vocab, data: list[str]) -> torch.Tensor:
+    """
+    [['a very good day ...'],...] -> [[2, 0, 152, 13, ...],...]
+    """
     preprocessed = [vocab(preprocess_text(element).split(' ')) for element in data]
     return torch.nn.utils.rnn.pad_sequence([torch.tensor(p) for p in preprocessed], batch_first=True)
 
@@ -76,13 +85,17 @@ def extract_filename_and_caption(loader, unique_images=False):
     info = info.apply(lambda x: (image_folder + '/' + x[0], x[1]))   # .rename({'column_0':'path', 'column_1': 'caption'})
     return info
 
-def df_generator(df,vocab, parts = 10000):
+def generator_from_dataframe(df, vocab, parts = 125):
     chunk_size = df.shape[0] // parts
+    anns = df.select(pl.col('column_1')).to_dict()['column_1']
+    tokens = get_tokens(vocab, anns)
     for i in range(parts):
         part = df.slice(i * chunk_size, chunk_size)
-        imgs = torch.cat([preprocess_image(el) for el in part.select(pl.col('column_0')).to_dict()['column_0']]).to(DEVICE)
-        text = get_tokens(vocab, part.select(pl.col('column_1')).to_dict()['column_1']).to(DEVICE)
-        yield imgs, text
+        img_path = part.select(pl.col('column_0')).to_dict()['column_0']
+        imgs = torch.cat([preprocess_image(el) for el in img_path]).to(DEVICE)
+        left_ind, right_ind = i * chunk_size, (i + 1) * chunk_size
+        text = (tokens[left_ind: right_ind]).to(DEVICE)
+        yield imgs, text, left_ind, right_ind
 
 
 
@@ -102,7 +115,6 @@ if __name__ == "__main__":
     # print(time.time() - t, '----- tokenize full train', example.shape)
     t = time.time()
     df = extract_filename_and_caption(loader, unique_images=True)
-    for el in df_generator(df, vocab):
+    for el in generator_from_dataframe(df, vocab):
         print(el)
-
     

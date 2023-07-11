@@ -37,16 +37,10 @@ class COCOparser:
         self.image_height = img_height
 
         data = json.loads(self.json_path.read_bytes())
-        # extract only filenames and id
-        # self.image_data = pl.DataFrame([dict(id=el['id'],
-        #                         filename=el['file_name']) for el in data['images']])
         image_data_dict = dict(id=[element['id'] for element in data['images']],
                                filename=[element['file_name'] for element in data['images']])
         self.image_data = pl.DataFrame(image_data_dict)
 
-        # extract only image_id and caption
-        # self.annotations_data = pl.DataFrame([dict(id=el['image_id'],
-        #                         caption=el['caption']) for el in data['annotations']])
         annotations_data_dict = dict(id = [element['image_id'] for element in data['annotations']],
                                      caption=[element['caption'] for element in data['annotations']])
         self.annotations_data = pl.DataFrame(annotations_data_dict)
@@ -74,9 +68,6 @@ class COCOparser:
             return
         else:
             return self.get_img_by_name(image_name)
-        
-    def get_all_imgs_path(self):
-        pass
         
     def get_caption_by_id(self, image_id):
         captions = self.annotations_data.filter(pl.col('id') == image_id).select(pl.col('caption')).to_dict()['caption']
