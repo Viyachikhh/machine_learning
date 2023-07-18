@@ -5,6 +5,7 @@ from torch import nn
 class MLP(nn.Module):
 
     def __init__(self, input_feature_count, hidden_feature_count):
+        super(MLP, self).__init__()
         self.sequential = torch.nn.Sequential(
             nn.Linear(input_feature_count, hidden_feature_count),
             nn.GELU(),
@@ -17,6 +18,7 @@ class MLP(nn.Module):
 
 class TransformLayer(nn.Module):
     def __init__(self,d_model, n_heads, attn_mask: torch.Tensor = None):
+        super(TransformLayer, self).__init__()
         self.attn = nn.MultiheadAttention(d_model, n_heads)
         self.norm_1 = nn.LayerNorm(d_model)
         self.mlp = MLP(d_model, d_model * 3)
@@ -36,6 +38,7 @@ class TransformLayer(nn.Module):
 
 class TextTransformer(nn.Module):
     def __init__(self, width, n_heads, layers, attn_mask: torch.Tensor = None):
+        super(TextTransformer, self).__init__()
         self.width = width # embedding size of text
         self.layers = layers 
         self.blocks = nn.Sequential(*[TransformLayer(width, n_heads, attn_mask) for _ in range(layers)])
@@ -46,6 +49,7 @@ class TextTransformer(nn.Module):
 
 class VisionTransformer(nn.Module):
     def __init__(self, input_res_size, width, patch_size, layers, n_heads, output_dim):
+        super(VisionTransformer, self).__init__()
         self.patch_conv = nn.Conv2d(in_channels=3, out_channels=width, kernel_size=patch_size, stride=patch_size, bias=False)
 
         scale = width ** -0.5
@@ -67,13 +71,12 @@ class VisionTransformer(nn.Module):
         x = torch.cat([self.class_embedding.to(x.dtype) + torch.zeros(x.shape[0], 1, x.shape[-1], dtype=x.dtype, device=x.device), x], dim=1)
         x += self.positional_embedding.to(x.dtype)
 
-        x = self.ln_pre(x)
-
+        x = self.norm_pre(x)
         x = x.permute(1, 0, 2)  # NLD -> LND
         x = self.transformer(x)
         x = x.permute(1, 0, 2)  # LND -> NLD
 
-        x = self.ln_post(x[:, 0, :])
+        x = self.norm_post(x[:, 0, :])
 
         if self.proj is not None:
             x = x @ self.proj
