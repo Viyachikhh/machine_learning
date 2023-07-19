@@ -12,7 +12,7 @@ from collections import defaultdict
 from gc import collect
 
 
-from consts import (TRAIN_IMGS_PATH, VAL_IMGS_PATH, 
+from src.consts import (TRAIN_IMGS_PATH, VAL_IMGS_PATH, 
                     IMAGE_WIDTH, IMAGE_HEIGHT)
 
 """

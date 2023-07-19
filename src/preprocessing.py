@@ -14,9 +14,9 @@ from torchtext.vocab import build_vocab_from_iterator
 from torchtext.functional import to_tensor
 from torchvision.io import read_image
 
-from consts import (TOKENIZER, START_TOKEN, END_TOKEN, ANN_PATH, REGEX_VERBS, 
+from src.consts import (TOKENIZER, START_TOKEN, END_TOKEN, ANN_PATH, REGEX_VERBS, 
                     DEVICE, IMAGE_RESIZE_OBJ, IMAGE_HEIGHT, IMAGE_WIDTH)
-from coco_loader import COCOparser
+from src.coco_loader import COCOparser
 
 warnings.filterwarnings("ignore")
 
@@ -85,16 +85,16 @@ def extract_filename_and_caption(loader, unique_images=False):
     info = info.apply(lambda x: (image_folder + '/' + x[0], x[1]))   # .rename({'column_0':'path', 'column_1': 'caption'})
     return info
 
-def generator_from_dataframe(df, vocab, parts = 125):
-    chunk_size = df.shape[0] // parts
+def generator_from_dataframe(df, vocab, batch_size = 32):
+    batch_count = df.shape[0] // batch_size
     anns = df.select(pl.col('column_1')).to_dict()['column_1']
     tokens = get_tokens(vocab, anns)
-    for i in range(parts):
-        part = df.slice(i * chunk_size, chunk_size)
+    for i in range(batch_count):
+        part = df.slice(i * batch_size, batch_size)
         img_path = part.select(pl.col('column_0')).to_dict()['column_0']
-        imgs = torch.cat([preprocess_image(el) for el in img_path]).to(DEVICE)
-        left_ind, right_ind = i * chunk_size, (i + 1) * chunk_size
-        text = (tokens[left_ind: right_ind]).to(DEVICE)
+        imgs = torch.cat([preprocess_image(el) for el in img_path]).to(DEVICE, dtype=torch.float16)
+        left_ind, right_ind = i * batch_size, (i + 1) * batch_size
+        text = (tokens[left_ind: right_ind]).to(DEVICE, dtype=torch.int32)
         yield imgs, text, left_ind, right_ind
 
 
