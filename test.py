@@ -48,11 +48,11 @@ def test_extracting_and_preprocessing():
 
 
 def test_vision_architecture():
-    batch_size = 100
+    batch_size = 1000
     output_dim = 112
     width = 64
     img_res = 224
-    patch_size = 4
+    patch_size = 14
     layers_count = 2
     n_heads = 8
     assert width % n_heads == 0
