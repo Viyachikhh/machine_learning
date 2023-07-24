@@ -5,7 +5,7 @@ import os
 import pytest
 
 
-from src.models import TextTransformer, VisionTransformer, convert_weights_to_fp16
+from src.models import CLIP, convert_weights_to_fp16
 from src.coco_loader import COCOparser
 from src.preprocessing import extract_filename_and_caption, generator_from_dataframe, build_vocabulary
 from src.consts import *
@@ -50,16 +50,30 @@ def test_extracting_and_preprocessing():
 def test_vision_architecture():
     batch_size = 1000
     output_dim = 112
-    width = 64
+    img_width = 64
     img_res = 224
     patch_size = 14
-    layers_count = 2
+    vision_layers_count = 2
     n_heads = 8
-    assert width % n_heads == 0
-    vision = VisionTransformer(img_res, width, patch_size, layers_count, n_heads, output_dim).cuda()
-    convert_weights_to_fp16(vision)
-    input_ = torch.randn(batch_size, 3, img_res, img_res).cuda()
-    print(vision(input_.type(vision.dtype)).shape)
+    assert img_width % n_heads == 0
+
+    context_length = 50
+    text_width = 768
+    text_layers_count = 2
+    vocab_size = 5000
+    img = None
+    text = None
+    model = CLIP(output_dim=output_dim,
+                 img_res=img_res,
+                 patch_size=patch_size,
+                 vision_layers_count=vision_layers_count,
+                 vocab_size=vocab_size,
+                 context_length=context_length,
+                 text_width=text_width,
+                 text_n_heads=n_heads,
+                 text_layers_count=text_layers_count)
+   
+  
     # assert vision(input_).shape 
 
 
